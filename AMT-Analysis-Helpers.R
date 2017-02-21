@@ -195,3 +195,59 @@ mae <- function(error)
 {
   return(mean(abs(error)))
 }
+
+
+# give me back the processed grids with AMT data
+onlyRelevantEmissions = function(mydata, dname){
+  opath = "/Users/leejoey/Dropbox/_Projects/ubc-micromet/DIYSCO2-main/amt-data/01_derived-gridded-emissions/"
+  oname = paste(opath,dname, "")
+  output_data = mydata@data[,c("co2_avg",
+                               "co2_min",
+                               "co2_max",
+                               "co2_med",
+                               "co2_stdev",
+                               "co2_var",
+                               "co2_skew",
+                               "co2_avg_e",
+                               "co2_rng",
+                               "co2_cnt",
+                               "id",
+                               "gid",
+                               "e_1",
+                               "e_2",
+                               "e_3",
+                               "e_4",
+                               "e_5",
+                               "e_6",
+                               "e_7",
+                               "e_8",
+                               "e_9",
+                               "e_10",
+                               "e_11",
+                               "e_12",
+                               "e_13",
+                               "e_14",
+                               "e_15",
+                               "e_16",
+                               "e_17",
+                               "e_18",
+                               "e_19",
+                               "e_20",
+                               "e_21",
+                               "e_22",
+                               "e_23",
+                               "e_24",
+                               "e_10_14_hr",
+                               "bt_co2e",
+                               "med_bco2eyr",
+                               "mean_bco2eyr",
+                               "rng_bco2eyr",
+                               "maj_bco2eyr",
+                               "max_bco2eyr",
+                               "cnt_bco2eyr",
+                               "hoodgrouped",
+                               "cntr_x",
+                               "cntr_y")]
+  mydata@data = output_data
+  writeOGR(mydata, oname, 'mydata', driver="GeoJSON")
+}

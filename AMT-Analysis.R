@@ -29,7 +29,7 @@ require(plyr)
 
 # ----------- setup ---------------# 
 # Set the Working Directory
-setwd('/Users/jozo/Dropbox/_Projects/ubc-micromet/DIYSCO2-main')
+setwd('/Users/leejoey/Dropbox/_Projects/ubc-micromet/DIYSCO2-main')
 
 # set projection for proj
 projection_utm10n = CRS("+proj=utm +zone=10 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m
@@ -228,6 +228,20 @@ createDataList = function(experiment){
 
 experiment_150528 = createDataList(150528)
 experiment_160318  = createDataList(160318)
+
+
+
+# onlyRelevantEmissions(experiment_150528$data_50m_within, "gridded-data-50m-utm10n-150528.geojson")
+# onlyRelevantEmissions(experiment_150528$data_100m_within, "gridded-data-100m-utm10n-150528.geojson")
+# onlyRelevantEmissions(experiment_150528$data_200m_within, "gridded-data-200m-utm10n-150528.geojson")
+# onlyRelevantEmissions(experiment_150528$data_400m_within, "gridded-data-400m-utm10n-150528.geojson")
+# 
+# onlyRelevantEmissions(experiment_160318$data_50m_within, "gridded-data-50m-utm10n-160318.geojson")
+# onlyRelevantEmissions(experiment_160318$data_100m_within, "gridded-data-100m-utm10n-160318.geojson")
+# onlyRelevantEmissions(experiment_160318$data_200m_within, "gridded-data-200m-utm10n-160318.geojson")
+# onlyRelevantEmissions(experiment_160318$data_400m_within, "gridded-data-400m-utm10n-160318.geojson")
+
+
 
 tableFromSummary = function(ilist){
   for(i in 1:length(ilist)){
@@ -571,14 +585,14 @@ listStatistics = function(inputList){
 experiment_150528_stats = listStatistics(experiment_150528)
 experiment_160318_stats = listStatistics(experiment_160318)
 
-
-
-nrow(experiment_160318$data_100m_within)
+# ------------ get summary stats for experiment 160318  ------------- #
+# how many grid cells are in the data
 nrow(experiment_160318$data_100m_within@data)
-
+# how many grid cells after removing NA's 
 nrow(experiment_160318$data_100m_within_nona@data)
 nrow(experiment_150528$data_100m_within_nona@data)
 
+# give the stats as a table from the following data
 tableFromSummary(experiment_160318_stats$summary_stats_co2_ppm_within)
 tableFromSummary(experiment_160318_stats$summary_stats_measured_emissions_within)
 tableFromSummary(experiment_160318_stats$summary_stats_measured_emissions_epicc)
@@ -589,15 +603,15 @@ experiment_160318_stats$mean_absolute_error
 experiment_160318_stats$rmse_report
 experiment_160318_stats$correlation_coeffs
 experiment_160318_stats$magnitude_differences_buildings
-
-
-
+# What is the maximum emissions from the experiment
 max(experiment_160318$data_100m@data$co2_avg_e, na.rm=T)
+# plot the data with no Na's
 plot(experiment_160318$data_100m_within_nona)
+# give the summary stats from buildings and traffic
 tableFromSummary(experiment_160318_stats$summary_stats_building_emissions_epicc)
 tableFromSummary(experiment_160318_stats$summary_stats_traffic_emissions_epicc)
 
-
+# ------------ get summary stats for experiment 150528  ------------- #
 tableFromSummary(experiment_150528_stats$summary_stats_co2_ppm_within)
 tableFromSummary(experiment_150528_stats$summary_stats_measured_emissions_epicc)
 tableFromSummary(experiment_150528_stats$summary_stats_total_emissions_epicc)
@@ -607,6 +621,61 @@ experiment_150528_stats$mean_absolute_error
 experiment_150528_stats$rmse_report
 experiment_150528_stats$correlation_coeffs
 experiment_150528_stats$magnitude_differences_buildings
+
+
+# ---------- T-test between neighborhoods as suggested by Velasco --------- #
+# Subset by neighborhood ($hoodgrouped)
+tmp_hoodNames = unique(experiment_160318$data_100m_within@data$hoodgrouped)
+
+
+
+compareHoods = function(df){
+  # for each neighborhood subset out the grid cell values
+  myData = df$data_100m_within@data
+  myHoodPixels = list()
+  # the results of the test
+  testResults = list()
+  # p-value matrix
+  pValMatrix = c()
+  
+  for(i in 1:length(tmp_hoodNames)){
+    tmpCells = subset(myData$co2_avg, myData$hoodgrouped == tmp_hoodNames[i])
+    myHoodPixels[[i]] <- tmpCells
+  }
+  names(myHoodPixels) = tmp_hoodNames
+  # print(myHoodPixels)
+  
+  # TODO use recursion to compare - for now try below
+  for(i in 1:length(myHoodPixels)){
+    nh = list()
+    pvals = c()
+    for(j in 1:length(myHoodPixels)){
+      mytest = t.test(myHoodPixels[[i]], myHoodPixels[[j]])
+      mytest$data.name = paste(names(myHoodPixels)[[i]], names(myHoodPixels)[[j]], sep =" VS ")
+      # get the results of each test
+      nh[[j]] = mytest
+      #get those pvals
+      pvals[[j]] =  mytest$p.value
+    }
+    testResults[[i]] = nh
+    pValMatrix[[i]] = pvals
+    print(pvals)
+  }
+  names(testResults) = tmp_hoodNames
+  # print(testResults)
+  pValMatrix = do.call(rbind, pValMatrix)
+  rownames(pValMatrix) <- tmp_hoodNames
+  colnames(pValMatrix) <- tmp_hoodNames
+  
+  # return the interesting objects
+  output = list("testResults" = testResults, "pValMatrix" = pValMatrix)
+  return(output)
+}
+comparedNeighborhoods_160318 = compareHoods(experiment_160318)
+comparedNeighborhoods_150528 = compareHoods(experiment_150528)
+
+heatmap(comparedNeighborhoods_160318$pValMatrix,Colv="Rowv", col = heat.colors(256), margins=c(20,20))
+heatmap(comparedNeighborhoods_150528$pValMatrix, Colv="Rowv", col = heat.colors(256), margins=c(20,20))
 
 
 # ------------------------------- Handy Expressions -------------------------------------#
